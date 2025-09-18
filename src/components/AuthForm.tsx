@@ -1,32 +1,76 @@
+// src/components/AuthForm.tsx
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Shield, Mail, Lock, Phone } from "lucide-react";
+import { Shield, Mail, Lock, User as UserIcon } from "lucide-react";
+import { toast } from "sonner";
+import { loginUser, registerUser } from "@/services/apiService";
+import { LoginCredentials, RegisterUserData } from "@/types";
+import { useAuth } from "@/context/AuthContext";
 
-interface AuthFormProps {
-  onAuthSuccess: (userType: 'voter' | 'admin') => void;
-}
-
-const AuthForm = ({ onAuthSuccess }: AuthFormProps) => {
+const AuthForm = () => {
+  const { login } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
-  const [otpSent, setOtpSent] = useState(false);
 
-  const handleLogin = async (e: React.FormEvent, userType: 'voter' | 'admin') => {
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+
+  const [regFullName, setRegFullName] = useState('');
+  const [regEmail, setRegEmail] = useState('');
+  const [regPassword, setRegPassword] = useState('');
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    const credentials: LoginCredentials = { email: loginEmail, password: loginPassword };
     
-    // Simulate authentication
-    setTimeout(() => {
-      setIsLoading(false);
-      if (!otpSent) {
-        setOtpSent(true);
+    try {
+      const data = await loginUser(credentials);
+      login(data.user, data.token); 
+      toast.success('Login successful!');
+    } catch (error) {
+      if (error instanceof Error) {
+        toast.error(error.message);
       } else {
-        onAuthSuccess(userType);
+        toast.error("An unexpected error occurred during login.");
       }
-    }, 2000);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // THIS IS THE CORRECTED FUNCTION
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    const userData: RegisterUserData = {
+      fullName: regFullName,
+      email: regEmail,
+      password: regPassword,
+    };
+
+    try {
+      const data = await registerUser(userData);
+      toast.success(data.message + " Please log in.");
+      
+      setRegFullName('');
+      setRegEmail('');
+      setRegPassword('');
+      // In a real app, you might want to switch the tab to 'login' here
+    } catch (error) {
+      if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error("An unexpected error occurred during registration.");
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -43,139 +87,67 @@ const AuthForm = ({ onAuthSuccess }: AuthFormProps) => {
         </CardHeader>
         
         <CardContent>
-          <Tabs defaultValue="voter" className="w-full">
+          <Tabs defaultValue="login" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="voter">Voter Login</TabsTrigger>
-              <TabsTrigger value="admin">Admin Login</TabsTrigger>
+              <TabsTrigger value="login">Login</TabsTrigger>
+              <TabsTrigger value="register">Register</TabsTrigger>
             </TabsList>
             
-            <TabsContent value="voter">
-              <form onSubmit={(e) => handleLogin(e, 'voter')} className="space-y-4">
+            <TabsContent value="login">
+              <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="voter-email">Email</Label>
+                  <Label htmlFor="login-email">Email</Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="voter-email"
-                      type="email"
-                      placeholder="Enter your email"
-                      className="pl-10"
-                      required
-                    />
+                    <Input id="login-email" type="email" placeholder="Enter your email" className="pl-10" required value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} />
                   </div>
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="voter-password">Password</Label>
+                  <Label htmlFor="login-password">Password</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="voter-password"
-                      type="password"
-                      placeholder="Enter your password"
-                      className="pl-10"
-                      required
-                    />
+                    <Input id="login-password" type="password" placeholder="Enter your password" className="pl-10" required value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} />
                   </div>
                 </div>
-
-                {otpSent && (
-                  <div className="space-y-2">
-                    <Label htmlFor="otp">OTP Code</Label>
-                    <div className="relative">
-                      <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="otp"
-                        type="text"
-                        placeholder="Enter 6-digit OTP"
-                        className="pl-10"
-                        maxLength={6}
-                        required
-                      />
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      OTP sent to your registered email/phone
-                    </p>
-                  </div>
-                )}
                 
-                <Button 
-                  type="submit" 
-                  className="w-full" 
-                  variant="civic"
-                  disabled={isLoading}
-                >
-                  {isLoading ? "Authenticating..." : otpSent ? "Verify & Login" : "Send OTP"}
+                <Button type="submit" className="w-full" variant="civic" disabled={isLoading}>
+                  {isLoading ? "Authenticating..." : "Login"}
                 </Button>
               </form>
             </TabsContent>
             
-            <TabsContent value="admin">
-              <form onSubmit={(e) => handleLogin(e, 'admin')} className="space-y-4">
+            <TabsContent value="register">
+              <form onSubmit={handleRegister} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="admin-email">Admin Email</Label>
+                  <Label htmlFor="reg-name">Full Name</Label>
+                   <div className="relative">
+                    <UserIcon className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input id="reg-name" type="text" placeholder="Enter your full name" className="pl-10" required value={regFullName} onChange={(e) => setRegFullName(e.target.value)} />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="reg-email">Email</Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="admin-email"
-                      type="email"
-                      placeholder="Enter admin email"
-                      className="pl-10"
-                      required
-                    />
+                    <Input id="reg-email" type="email" placeholder="Enter your email" className="pl-10" required value={regEmail} onChange={(e) => setRegEmail(e.target.value)} />
                   </div>
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="admin-password">Admin Password</Label>
+                  <Label htmlFor="reg-password">Password</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="admin-password"
-                      type="password"
-                      placeholder="Enter admin password"
-                      className="pl-10"
-                      required
-                    />
+                    <Input id="reg-password" type="password" placeholder="Create a password" className="pl-10" required value={regPassword} onChange={(e) => setRegPassword(e.target.value)} />
                   </div>
                 </div>
-
-                {otpSent && (
-                  <div className="space-y-2">
-                    <Label htmlFor="admin-otp">Admin OTP</Label>
-                    <div className="relative">
-                      <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="admin-otp"
-                        type="text"
-                        placeholder="Enter 6-digit OTP"
-                        className="pl-10"
-                        maxLength={6}
-                        required
-                      />
-                    </div>
-                  </div>
-                )}
                 
-                <Button 
-                  type="submit" 
-                  className="w-full" 
-                  variant="hero"
-                  disabled={isLoading}
-                >
-                  {isLoading ? "Authenticating..." : otpSent ? "Verify & Login" : "Admin Access"}
+                <Button type="submit" className="w-full" variant="hero" disabled={isLoading}>
+                  {isLoading ? "Registering..." : "Create Account"}
                 </Button>
               </form>
             </TabsContent>
           </Tabs>
-          
-          <div className="mt-6 text-center text-sm text-muted-foreground">
-            <p>New voter?{" "}
-              <Button variant="link" className="p-0 h-auto">
-                Register here
-              </Button>
-            </p>
-          </div>
         </CardContent>
       </Card>
     </div>

@@ -1,8 +1,15 @@
+// src/components/HeroSection.tsx
+
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Shield, Users, ChartBar, Lock } from "lucide-react";
 
-const HeroSection = () => {
+// Define the props for the component, including our new function
+interface HeroSectionProps {
+  onNavigateToAuth: () => void;
+}
+
+const HeroSection = ({ onNavigateToAuth }: HeroSectionProps) => {
   return (
     <div className="min-h-screen bg-gradient-hero">
       {/* Header */}
@@ -13,10 +20,11 @@ const HeroSection = () => {
             <h1 className="text-2xl font-bold text-primary-foreground">VoteSecure</h1>
           </div>
           <div className="space-x-4">
-            <Button variant="outline" className="border-white/20 text-primary-foreground hover:bg-white/10">
+            {/* These buttons now call the function passed from the parent */}
+            <Button onClick={onNavigateToAuth} variant="outline" className="border-white/20 text-primary-foreground hover:bg-white/10">
               Login
             </Button>
-            <Button variant="secondary">
+            <Button onClick={onNavigateToAuth} variant="secondary">
               Sign Up
             </Button>
           </div>
@@ -34,7 +42,7 @@ const HeroSection = () => {
             Transparent, accessible, and tamper-proof elections for the digital age.
           </p>
           <div className="space-x-4">
-            <Button variant="secondary" size="lg">
+            <Button onClick={onNavigateToAuth} variant="secondary" size="lg">
               Start Voting
             </Button>
             <Button variant="outline" size="lg" className="border-white/20 text-primary-foreground hover:bg-white/10">
@@ -43,7 +51,7 @@ const HeroSection = () => {
           </div>
         </div>
 
-        {/* Features Grid */}
+        {/* Features Grid - THIS IS THE MISSING CONTENT */}
         <div className="grid md:grid-cols-3 gap-8 mt-20">
           <Card className="bg-white/10 backdrop-blur-sm border-white/20 text-primary-foreground">
             <CardHeader>
@@ -54,7 +62,6 @@ const HeroSection = () => {
               </CardDescription>
             </CardHeader>
           </Card>
-
           <Card className="bg-white/10 backdrop-blur-sm border-white/20 text-primary-foreground">
             <CardHeader>
               <Users className="h-12 w-12 text-secondary mb-4" />
@@ -64,7 +71,6 @@ const HeroSection = () => {
               </CardDescription>
             </CardHeader>
           </Card>
-
           <Card className="bg-white/10 backdrop-blur-sm border-white/20 text-primary-foreground">
             <CardHeader>
               <ChartBar className="h-12 w-12 text-secondary mb-4" />
@@ -76,7 +82,7 @@ const HeroSection = () => {
           </Card>
         </div>
 
-        {/* Trust Indicators */}
+        {/* Trust Indicators - THIS IS ALSO MISSING CONTENT */}
         <div className="mt-20 text-center">
           <div className="flex items-center justify-center space-x-8 text-primary-foreground/80">
             <div className="flex items-center space-x-2">
