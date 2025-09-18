@@ -22,9 +22,9 @@ const pool = new Pool({
   port: parseInt(process.env.DB_PORT || '5432', 10),
 });
 
-// --- API ROUTES START HERE ---
+// --- API ROUTES ---
 
-// POST /api/register - Public User Registration
+// AUTHENTICATION ROUTES
 app.post('/api/register', async (req, res) => {
   try {
     const { fullName, email, password } = req.body;
@@ -51,37 +51,6 @@ app.post('/api/register', async (req, res) => {
   }
 });
 
-// POST /api/admin/register - Create a new admin (Protected, Admin Only)
-app.post('/api/admin/register', protect, async (req: RequestWithUser, res: Response) => {
-  if (req.user?.role !== 'admin') {
-    return res.status(403).json({ message: 'Forbidden: Only admins can create new admin accounts.' });
-  }
-  const { fullName, email, password } = req.body;
-  if (!email.endsWith('@admin.gmail.com')) {
-    return res.status(400).json({ message: 'Invalid email domain for an admin account.' });
-  }
-  try {
-    const userCheck = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
-    if (userCheck.rows.length > 0) {
-      return res.status(409).json({ message: 'User with this email already exists.' });
-    }
-    const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
-    const newUser = await pool.query(
-      'INSERT INTO users (full_name, email, password, role) VALUES ($1, $2, $3, $4) RETURNING id, email, role',
-      [fullName, email, hashedPassword, 'admin']
-    );
-    res.status(201).json({
-      message: 'Admin user registered successfully!',
-      user: newUser.rows[0],
-    });
-  } catch (error) {
-    console.error('Admin registration error:', error);
-    res.status(500).json({ message: 'Server error during admin registration.' });
-  }
-});
-
-// POST /api/login - User Login Endpoint
 app.post('/api/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -118,7 +87,84 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-// POST /api/admin/candidates - Create a new candidate (Admin Only)
+
+// USER ROUTES (Protected)
+app.get('/api/profile', protect, async (req: RequestWithUser, res: Response) => {
+    const userId = req.user?.userId;
+    try {
+      const userResult = await pool.query('SELECT id, full_name, email, role FROM users WHERE id = $1', [userId]);
+      if (userResult.rows.length === 0) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+      res.status(200).json(userResult.rows[0]);
+    } catch (error) {
+      console.error('Profile fetch error:', error);
+      res.status(500).json({ message: 'Server error fetching profile.' });
+    }
+});
+
+app.get('/api/candidates', protect, async (req, res) => {
+    try {
+      const candidatesResult = await pool.query('SELECT * FROM candidates ORDER BY id');
+      res.status(200).json(candidatesResult.rows);
+    } catch (error) {
+      console.error('Error fetching candidates:', error);
+      res.status(500).json({ message: 'Server error fetching candidates.' });
+    }
+});
+
+app.post('/api/vote', protect, async (req: RequestWithUser, res: Response) => {
+    const { candidateId } = req.body;
+    const userId = req.user?.userId;
+    if (!candidateId) {
+      return res.status(400).json({ message: 'Candidate ID is required.' });
+    }
+    try {
+      await pool.query(
+        'INSERT INTO votes (user_id, candidate_id) VALUES ($1, $2)',
+        [userId, candidateId]
+      );
+      res.status(201).json({ message: 'Vote cast successfully!' });
+    } catch (error) {
+      console.error('Error casting vote:', error);
+      if (error && typeof error === 'object' && 'code' in error && error.code === '23505') {
+        return res.status(409).json({ message: 'You have already voted.' });
+      }
+      res.status(500).json({ message: 'Server error while casting vote.' });
+    }
+});
+
+
+// ADMIN ROUTES (Admin Only)
+app.post('/api/admin/register', protect, async (req: RequestWithUser, res: Response) => {
+  if (req.user?.role !== 'admin') {
+    return res.status(403).json({ message: 'Forbidden: Only admins can create new admin accounts.' });
+  }
+  const { fullName, email, password } = req.body;
+  if (!email.endsWith('@admin.gmail.com')) {
+    return res.status(400).json({ message: 'Invalid email domain for an admin account.' });
+  }
+  try {
+    const userCheck = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    if (userCheck.rows.length > 0) {
+      return res.status(409).json({ message: 'User with this email already exists.' });
+    }
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    const newUser = await pool.query(
+      'INSERT INTO users (full_name, email, password, role) VALUES ($1, $2, $3, $4) RETURNING id, email, role',
+      [fullName, email, hashedPassword, 'admin']
+    );
+    res.status(201).json({
+      message: 'Admin user registered successfully!',
+      user: newUser.rows[0],
+    });
+  } catch (error) {
+    console.error('Admin registration error:', error);
+    res.status(500).json({ message: 'Server error during admin registration.' });
+  }
+});
+
 app.post('/api/admin/candidates', protect, async (req: RequestWithUser, res: Response) => {
     if (req.user?.role !== 'admin') {
       return res.status(403).json({ message: 'Forbidden: Access is restricted to administrators.' });
@@ -142,7 +188,6 @@ app.post('/api/admin/candidates', protect, async (req: RequestWithUser, res: Res
     }
 });
 
-// PUT /api/admin/candidates/:id - Update a candidate (Admin Only)
 app.put('/api/admin/candidates/:id', protect, async (req: RequestWithUser, res: Response) => {
     if (req.user?.role !== 'admin') {
       return res.status(403).json({ message: 'Forbidden: Access is restricted to administrators.' });
@@ -170,7 +215,6 @@ app.put('/api/admin/candidates/:id', protect, async (req: RequestWithUser, res: 
     }
 });
 
-// DELETE /api/admin/candidates/:id - Delete a candidate (Admin Only)
 app.delete('/api/admin/candidates/:id', protect, async (req: RequestWithUser, res: Response) => {
     if (req.user?.role !== 'admin') {
       return res.status(403).json({ message: 'Forbidden: Access is restricted to administrators.' });
@@ -188,7 +232,6 @@ app.delete('/api/admin/candidates/:id', protect, async (req: RequestWithUser, re
     }
 });
 
-// GET /api/admin/stats - Fetch dashboard statistics (Admin Only)
 app.get('/api/admin/stats', protect, async (req: RequestWithUser, res: Response) => {
     if (req.user?.role !== 'admin') {
       return res.status(403).json({ message: 'Forbidden: Access is restricted to administrators.' });
@@ -213,55 +256,77 @@ app.get('/api/admin/stats', protect, async (req: RequestWithUser, res: Response)
     }
 });
 
-// GET /api/candidates - Fetch all candidates (Protected)
-app.get('/api/candidates', protect, async (req, res) => {
+app.get('/api/admin/vote-distribution', protect, async (req: RequestWithUser, res: Response) => {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ message: 'Forbidden: Access is restricted to administrators.' });
+    }
     try {
-      const candidatesResult = await pool.query('SELECT * FROM candidates ORDER BY id');
-      res.status(200).json(candidatesResult.rows);
+      const result = await pool.query(`
+        SELECT c.name, COUNT(v.id) AS votes
+        FROM candidates c
+        LEFT JOIN votes v ON c.id = v.candidate_id
+        GROUP BY c.id
+        ORDER BY votes DESC;
+      `);
+      res.status(200).json(result.rows);
     } catch (error) {
-      console.error('Error fetching candidates:', error);
-      res.status(500).json({ message: 'Server error fetching candidates.' });
+      console.error('Error fetching vote distribution:', error);
+      res.status(500).json({ message: 'Server error while fetching vote distribution.' });
+    }
+});
+  
+app.get('/api/admin/voter-turnout', protect, async (req: RequestWithUser, res: Response) => {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ message: 'Forbidden: Access is restricted to administrators.' });
+    }
+    try {
+      const totalVotersResult = await pool.query("SELECT COUNT(*) FROM users WHERE role = 'voter'");
+      const votedCountResult = await pool.query('SELECT COUNT(DISTINCT user_id) FROM votes');
+      
+      const totalVoters = parseInt(totalVotersResult.rows[0].count, 10);
+      const votersWhoVoted = parseInt(votedCountResult.rows[0].count, 10);
+  
+      res.status(200).json([
+        { name: 'Voted', value: votersWhoVoted },
+        { name: 'Not Voted', value: totalVoters - votersWhoVoted },
+      ]);
+    } catch (error) {
+      console.error('Error fetching voter turnout:', error);
+      res.status(500).json({ message: 'Server error while fetching voter turnout.' });
     }
 });
 
-// POST /api/vote - Cast a vote (Protected)
-app.post('/api/vote', protect, async (req: RequestWithUser, res: Response) => {
-    const { candidateId } = req.body;
-    const userId = req.user?.userId;
-    if (!candidateId) {
-      return res.status(400).json({ message: 'Candidate ID is required.' });
-    }
-    try {
-      await pool.query(
-        'INSERT INTO votes (user_id, candidate_id) VALUES ($1, $2)',
-        [userId, candidateId]
-      );
-      res.status(201).json({ message: 'Vote cast successfully!' });
-    } catch (error) {
-      console.error('Error casting vote:', error);
-      if (error && typeof error === 'object' && 'code' in error && error.code === '23505') {
-        return res.status(409).json({ message: 'You have already voted.' });
-      }
-      res.status(500).json({ message: 'Server error while casting vote.' });
-    }
+
+// PUBLIC ROUTES
+app.get('/api/results', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT c.id, c.name, c.party, c.description, COUNT(v.id) AS votes
+      FROM candidates c
+      LEFT JOIN votes v ON c.id = v.candidate_id
+      GROUP BY c.id
+      ORDER BY votes DESC;
+    `);
+
+    const totalVotesResult = await pool.query('SELECT COUNT(*) FROM votes');
+    const totalVotes = parseInt(totalVotesResult.rows[0].count, 10);
+
+    const resultsWithPercentage = result.rows.map(candidate => ({
+      ...candidate,
+      votes: parseInt(candidate.votes, 10),
+      percentage: totalVotes === 0 ? 0 : parseFloat(((parseInt(candidate.votes, 10) / totalVotes) * 100).toFixed(1))
+    }));
+
+    res.status(200).json({
+      results: resultsWithPercentage,
+      totalVotes,
+    });
+  } catch (error) {
+    console.error('Error fetching results:', error);
+    res.status(500).json({ message: 'Server error while fetching results.' });
+  }
 });
 
-// GET /api/profile - A Protected Route
-app.get('/api/profile', protect, async (req: RequestWithUser, res: Response) => {
-    const userId = req.user?.userId;
-    try {
-      const userResult = await pool.query('SELECT id, full_name, email, role FROM users WHERE id = $1', [userId]);
-      if (userResult.rows.length === 0) {
-        return res.status(404).json({ message: 'User not found' });
-      }
-      res.status(200).json(userResult.rows[0]);
-    } catch (error) {
-      console.error('Profile fetch error:', error);
-      res.status(500).json({ message: 'Server error fetching profile.' });
-    }
-});
-
-// GET / - Test database connection
 app.get('/', async (req, res) => {
     try {
       const timeResult = await pool.query('SELECT NOW()');

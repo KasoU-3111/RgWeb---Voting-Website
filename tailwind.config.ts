@@ -1,3 +1,5 @@
+// tailwind.config.ts
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -103,11 +105,16 @@ export default {
 					to: {
 						height: '0'
 					}
-				}
+				},
+        "glow": {
+          "0%": { boxShadow: "0 0 5px hsl(var(--primary-glow))" },
+          "100%": { boxShadow: "0 0 25px hsl(var(--primary-glow))" },
+        }
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+        "glow": "glow 1.5s infinite alternate"
 			}
 		}
 	},

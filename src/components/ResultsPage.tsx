@@ -1,271 +1,86 @@
+// src/components/ResultsPage.tsx
+
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { Shield, Trophy, Users, TrendingUp, User, ArrowLeft } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { Shield, Trophy, Users, TrendingUp, User, ArrowLeft, Zap } from "lucide-react";
+import { getResults } from "@/services/apiService";
+import { toast } from "sonner";
+import { Skeleton } from "./ui/skeleton";
+import { Result } from "@/types"; // <-- IMPORT our new type
 
-interface ResultsPageProps {
-  onBack: () => void;
-}
+interface ResultsPageProps { onBack: () => void; }
+
+const COLORS = ["hsl(var(--primary))", "#82ca9d", "#ffc658", "#ff8042", "#0088FE", "#00C49F"];
 
 const ResultsPage = ({ onBack }: ResultsPageProps) => {
-  const results = [
-    { 
-      id: "1", 
-      name: "Voter A", 
-      party: "Progressive Party", 
-      votes: 245, 
-      percentage: 40.2,
-      color: "#3b82f6"
-    },
-    { 
-      id: "2", 
-      name: "Voter B", 
-      party: "Innovation Party", 
-      votes: 198, 
-      percentage: 32.5,
-      color: "#06b6d4"
-    },
-    { 
-      id: "3", 
-      name: "Voter C", 
-      party: "Community First", 
-      votes: 167, 
-      percentage: 27.3,
-      color: "#10b981"
-    }
-  ];
+  const [results, setResults] = useState<Result[]>([]); // <-- USE the new type
+  const [totalVotes, setTotalVotes] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const totalVotes = results.reduce((sum, candidate) => sum + candidate.votes, 0);
-  const winner = results[0];
+  useEffect(() => {
+    const fetchResults = async () => {
+      try {
+        setIsLoading(true);
+        const data = await getResults();
+        setResults(data.results);
+        setTotalVotes(data.totalVotes);
+      } catch (error) {
+        if (error instanceof Error) toast.error(`Failed to load results: ${error.message}`);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchResults();
+  }, []);
 
-  const chartData = results.map(candidate => ({
-    name: candidate.name.split(' ')[0], // First name only for chart
-    votes: candidate.votes,
-    percentage: candidate.percentage
-  }));
+  const winner = results.length > 0 ? results[0] : null;
+
+  if (isLoading) {
+    return <div className="min-h-screen animated-gradient flex items-center justify-center"><Skeleton className="h-96 w-3/4 bg-black/20"/></div>
+  }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <Button variant="outline" onClick={onBack}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </Button>
-            <div className="flex items-center space-x-2">
-              <Shield className="h-6 w-6 text-primary" />
-              <h1 className="text-xl font-semibold">Election Results</h1>
-            </div>
+    <div className="min-h-screen animated-gradient text-primary-foreground">
+      <header className="sticky top-0 z-50 animate-in fade-in-0 duration-1000">
+        <div className="container mx-auto px-4 py-4">
+          <div className="rounded-lg border border-white/10 bg-black/10 px-4 py-2 backdrop-blur-lg flex items-center justify-between">
+            <div className="flex items-center space-x-3"><Zap className="h-7 w-7 text-primary" /><h1 className="text-xl font-bold">Election Results</h1></div>
+            <Button onClick={onBack} variant="outline" className="border-white/20 bg-white/5 text-white hover:bg-white/20"><ArrowLeft className="h-4 w-4 mr-2" />Back to Home</Button>
           </div>
-          <Badge variant="outline" className="bg-success/10 text-success border-success/20">
-            <TrendingUp className="h-3 w-3 mr-1" />
-            Final Results
-          </Badge>
         </div>
       </header>
-
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-12">
         <div className="max-w-6xl mx-auto">
-          {/* Winner Announcement */}
-          <Card className="mb-8 bg-gradient-hero text-primary-foreground border-0">
-            <CardHeader className="text-center pb-4">
-              <div className="flex justify-center mb-4">
-                <div className="bg-white/20 rounded-full p-4">
-                  <Trophy className="h-12 w-12" />
-                </div>
-              </div>
-              <CardTitle className="text-3xl mb-2">Election Winner</CardTitle>
-              <CardDescription className="text-primary-foreground/90">
-                The results are in! Here's your elected representative.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="text-center">
-              <div className="flex justify-center items-center space-x-4 mb-4">
-                <Avatar className="w-20 h-20">
-                  <AvatarFallback className="text-2xl bg-white/20">
-                    <User className="h-10 w-10" />
-                  </AvatarFallback>
-                </Avatar>
-                <div className="text-left">
-                  <h3 className="text-2xl font-bold">{winner.name}</h3>
-                  <p className="text-primary-foreground/90">{winner.party}</p>
-                  <div className="flex items-center space-x-4 mt-2">
-                    <span className="text-3xl font-bold">{winner.votes}</span>
-                    <span className="text-primary-foreground/90">votes</span>
-                    <Badge className="bg-white/20 text-primary-foreground">
-                      {winner.percentage}%
-                    </Badge>
+          {winner && (
+            <Card className="mb-12 border-primary/30 bg-black/20 backdrop-blur-lg animate-in fade-in-0 slide-in-from-bottom-10 duration-700">
+              <CardHeader className="text-center pb-4"><div className="flex justify-center mb-4"><div className="rounded-full bg-primary/20 p-4 animate-glow border-2 border-primary/50"><Trophy className="h-12 w-12 text-primary" /></div></div><CardTitle className="text-4xl text-transparent bg-clip-text bg-gradient-to-br from-white to-gray-400">Election Winner</CardTitle><CardDescription className="text-muted-foreground">The results are finalized. Here is your elected representative.</CardDescription></CardHeader>
+              <CardContent className="text-center">
+                <div className="flex flex-col sm:flex-row justify-center items-center sm:space-x-6 mb-4">
+                  <Avatar className="w-24 h-24 border-4 border-primary/50 mb-4 sm:mb-0"><AvatarFallback className="text-4xl bg-background/80"><User className="h-12 w-12" /></AvatarFallback></Avatar>
+                  <div>
+                    <h3 className="text-3xl font-bold text-white">{winner.name}</h3>
+                    <p className="text-primary/80 font-semibold">{winner.party}</p>
+                    <div className="flex items-center justify-center space-x-4 mt-3"><span className="text-5xl font-bold">{winner.votes}</span><span className="text-muted-foreground mt-3">votes</span><Badge className="bg-primary/20 text-primary border-primary/50 text-lg">{winner.percentage}%</Badge></div>
                   </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
 
-          {/* Statistics Overview */}
-          <div className="grid md:grid-cols-3 gap-6 mb-8">
-            <Card className="bg-gradient-card border-0 shadow-civic">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium flex items-center">
-                  <Users className="h-4 w-4 mr-2 text-primary" />
-                  Total Votes Cast
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-primary">{totalVotes}</div>
-                <p className="text-sm text-muted-foreground">Across all candidates</p>
-              </CardContent>
-            </Card>
-            
-            <Card className="bg-gradient-card border-0 shadow-civic">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium flex items-center">
-                  <TrendingUp className="h-4 w-4 mr-2 text-secondary" />
-                  Voter Turnout
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-secondary">87.3%</div>
-                <p className="text-sm text-muted-foreground">Of registered voters</p>
-              </CardContent>
-            </Card>
-            
-            <Card className="bg-gradient-card border-0 shadow-civic">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium flex items-center">
-                  <Trophy className="h-4 w-4 mr-2 text-warning" />
-                  Winning Margin
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-warning">7.7%</div>
-                <p className="text-sm text-muted-foreground">Lead over runner-up</p>
-              </CardContent>
-            </Card>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
+            <Card className="border-white/10 bg-black/20 backdrop-blur-lg animate-in fade-in-0 slide-in-from-bottom-5 duration-500 delay-200"><CardHeader><CardTitle className="text-lg flex items-center"><Users className="mr-3 text-primary"/>Total Votes Cast</CardTitle></CardHeader><CardContent><p className="text-4xl font-bold">{totalVotes}</p></CardContent></Card>
+            <Card className="border-white/10 bg-black/20 backdrop-blur-lg animate-in fade-in-0 slide-in-from-bottom-5 duration-500 delay-300"><CardHeader><CardTitle className="text-lg flex items-center"><TrendingUp className="mr-3 text-primary"/>Voter Turnout</CardTitle></CardHeader><CardContent><p className="text-4xl font-bold">N/A</p></CardContent></Card>
+            <Card className="border-white/10 bg-black/20 backdrop-blur-lg animate-in fade-in-0 slide-in-from-bottom-5 duration-500 delay-400"><CardHeader><CardTitle className="text-lg flex items-center"><Shield className="mr-3 text-primary"/>Winning Margin</CardTitle></CardHeader><CardContent><p className="text-4xl font-bold">N/A</p></CardContent></Card>
           </div>
 
-          <div className="grid lg:grid-cols-2 gap-8 mb-8">
-            {/* Bar Chart */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Vote Distribution</CardTitle>
-                <CardDescription>Number of votes per candidate</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip 
-                      formatter={(value: any, name: string) => [
-                        `${value} votes (${chartData.find(d => d.votes === value)?.percentage}%)`,
-                        'Votes'
-                      ]}
-                    />
-                    <Bar dataKey="votes" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-
-            {/* Pie Chart */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Vote Share</CardTitle>
-                <CardDescription>Percentage breakdown by candidate</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={results}
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={100}
-                      fill="#8884d8"
-                      dataKey="votes"
-                      label={({ name, percentage }) => `${name.split(' ')[0]} ${percentage}%`}
-                    >
-                      {results.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(value: any) => [`${value} votes`, 'Votes']} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
+          <div className="grid lg:grid-cols-5 gap-8">
+            <Card className="lg:col-span-3 border-white/10 bg-black/20 backdrop-blur-lg animate-in fade-in-0 slide-in-from-bottom-5 duration-700"><CardHeader><CardTitle>Vote Distribution</CardTitle></CardHeader><CardContent className="h-80"><ResponsiveContainer width="100%" height="100%"><BarChart data={results} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}><XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} /><YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} /><Tooltip cursor={{ fill: 'hsla(var(--muted))' }} contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))', color: 'hsl(var(--foreground))' }} /><Bar dataKey="votes" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} /></BarChart></ResponsiveContainer></CardContent></Card>
+            <Card className="lg:col-span-2 border-white/10 bg-black/20 backdrop-blur-lg animate-in fade-in-0 slide-in-from-bottom-5 duration-700 delay-200"><CardHeader><CardTitle>Vote Share</CardTitle></CardHeader><CardContent className="h-80"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={results} dataKey="votes" nameKey="name" cx="50%" cy="50%" outerRadius={80} labelLine={false} label={({ name, percent }) => `${name.split(' ')[0]} ${(percent * 100).toFixed(0)}%`}><Cell key="cell-0" fill={COLORS[0]}/><Cell key="cell-1" fill={COLORS[1]}/><Cell key="cell-2" fill={COLORS[2]}/></Pie><Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))', color: 'hsl(var(--foreground))' }} /></PieChart></ResponsiveContainer></CardContent></Card>
           </div>
-
-          {/* Detailed Results Table */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Detailed Results</CardTitle>
-              <CardDescription>Complete breakdown of all candidates</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {results.map((candidate, index) => (
-                  <div key={candidate.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
-                    <div className="flex items-center space-x-4">
-                      <div className="flex items-center space-x-2">
-                        <div className="text-2xl font-bold text-muted-foreground">
-                          #{index + 1}
-                        </div>
-                        {index === 0 && <Trophy className="h-5 w-5 text-warning" />}
-                      </div>
-                      <Avatar>
-                        <AvatarFallback>
-                          <User className="h-5 w-5" />
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-semibold">{candidate.name}</p>
-                        <p className="text-sm text-muted-foreground">{candidate.party}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-6">
-                      <div className="text-right">
-                        <p className="text-2xl font-bold">{candidate.votes}</p>
-                        <p className="text-sm text-muted-foreground">votes</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-2xl font-bold" style={{ color: candidate.color }}>
-                          {candidate.percentage}%
-                        </p>
-                        <p className="text-sm text-muted-foreground">of total</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Election Info */}
-          <Card className="mt-8 bg-muted/30">
-            <CardContent className="pt-6">
-              <div className="grid md:grid-cols-2 gap-6 text-sm text-muted-foreground">
-                <div>
-                  <h4 className="font-medium text-foreground mb-2">Election Information</h4>
-                  <p>Election Date: August 15, 2025</p>
-                  <p>Total Registered Voters: 698</p>
-                  <p>Votes Cast: 610</p>
-                  <p>Invalid Votes: 0</p>
-                </div>
-                <div>
-                  <h4 className="font-medium text-foreground mb-2">Security & Transparency</h4>
-                  <p>✓ All votes encrypted and verified</p>
-                  <p>✓ Blockchain audit trail maintained</p>
-                  <p>✓ Real-time result updates</p>
-                  <p>✓ Zero tampering detected</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </main>
     </div>

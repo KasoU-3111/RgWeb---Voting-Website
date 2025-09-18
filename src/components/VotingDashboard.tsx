@@ -5,17 +5,19 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { CheckCircle, Shield, LogOut, User, Clock } from "lucide-react";
-import { toast } from "sonner"; // Using Sonner for sleeker notifications
-import { getCandidates, castVote } from "@/services/apiService"; // <-- IMPORT castVote
+import { CheckCircle, Shield, LogOut, User, Zap, ArrowRight } from "lucide-react";
+import { toast } from "sonner";
+import { getCandidates, castVote } from "@/services/apiService";
 import { Candidate } from "@/types";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/context/AuthContext";
 
 interface VotingDashboardProps {
   onLogout: () => void;
 }
 
 const VotingDashboard = ({ onLogout }: VotingDashboardProps) => {
+  const { currentUser } = useAuth();
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -24,41 +26,41 @@ const VotingDashboard = ({ onLogout }: VotingDashboardProps) => {
   const [isVoting, setIsVoting] = useState(false);
   
   useEffect(() => {
-    const fetchCandidates = async () => {
+    const fetchAndCheckStatus = async () => {
       try {
         setIsLoading(true);
         setError(null);
+        // Check if user has already voted by attempting to fetch candidates
+        // Our 'castVote' endpoint will tell us if they already voted.
+        // A more direct approach would be a dedicated 'GET /api/vote/status' endpoint.
         const data = await getCandidates();
         setCandidates(data);
       } catch (err) {
         let errorMessage = "Failed to fetch candidates.";
-        if (err instanceof Error) {
-          errorMessage = err.message;
-        }
+        if (err instanceof Error) errorMessage = err.message;
         setError(errorMessage);
         toast.error(errorMessage);
       } finally {
         setIsLoading(false);
       }
     };
-    fetchCandidates();
+    fetchAndCheckStatus();
   }, []);
 
-  // --- THIS IS THE UPDATED FUNCTION ---
   const handleVote = async () => {
-    if (!selectedCandidate) {
-      toast.warning("Please select a candidate before casting your vote.");
-      return;
-    }
-    
+    if (!selectedCandidate) return;
     setIsVoting(true);
     try {
       const result = await castVote(selectedCandidate);
       toast.success(result.message);
-      setHasVoted(true); // Switch to the "Thank You" screen
+      setHasVoted(true);
     } catch (error) {
       if (error instanceof Error) {
-        toast.error(error.message); // Will show "You have already voted."
+        // If the error is "You have already voted", we should also show the voted screen.
+        if (error.message.includes("already voted")) {
+          setHasVoted(true);
+        }
+        toast.error(error.message);
       } else {
         toast.error("An unexpected error occurred while voting.");
       }
@@ -67,109 +69,108 @@ const VotingDashboard = ({ onLogout }: VotingDashboardProps) => {
     }
   };
 
+  // The "Voted" screen is now a full component
   if (hasVoted) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <main className="container mx-auto px-4 py-12">
-          <div className="max-w-2xl mx-auto text-center">
-            <div className="bg-success/10 rounded-full w-24 h-24 flex items-center justify-center mx-auto mb-6">
-              <CheckCircle className="h-12 w-12 text-success" />
-            </div>
-            <h2 className="text-3xl font-bold mb-4">Vote Cast Successfully!</h2>
-            <p className="text-muted-foreground mb-8">
-              Your vote has been recorded securely. Thank you for your participation.
-            </p>
-            <Button onClick={onLogout}>
+      <div className="min-h-screen animated-gradient flex flex-col items-center justify-center p-4 text-center text-primary-foreground">
+        <div className="animate-in fade-in-0 zoom-in-75 duration-700">
+          <div className="mx-auto mb-8 h-24 w-24 rounded-full border-4 border-green-400/50 bg-green-400/20 flex items-center justify-center">
+            <CheckCircle className="h-12 w-12 text-green-300" />
+          </div>
+          <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-br from-white to-gray-400">
+            Thank You For Voting!
+          </h1>
+          <p className="mt-4 max-w-md mx-auto text-lg text-muted-foreground">
+            Your vote has been securely and anonymously recorded. You have played a vital role in shaping our future.
+          </p>
+          <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Button size="lg" variant="secondary" className="shadow-lg w-full sm:w-auto">
+              View Results (When Available)
+            </Button>
+            <Button size="lg" variant="outline" className="border-white/20 bg-white/5 text-white hover:bg-white/20 w-full sm:w-auto" onClick={onLogout}>
               <LogOut className="h-4 w-4 mr-2" />
               Logout
             </Button>
           </div>
-        </main>
-      </div>
-    );
-  }
-  
-  if (isLoading) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center mb-8">
-          <Skeleton className="h-10 w-1/3 mx-auto" />
-          <Skeleton className="h-4 w-2/3 mx-auto mt-4" />
-        </div>
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          {[1, 2, 3].map((n) => <Skeleton key={n} className="h-80 w-full" />)}
         </div>
       </div>
     );
-  }
-
-  if (error) {
-    return <div className="text-center text-destructive py-10">{error}</div>
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-                <Shield className="h-6 w-6 text-primary" />
-                <h1 className="text-xl font-semibold">VoteSecure Dashboard</h1>
-            </div>
-            <Button variant="outline" onClick={onLogout}>
-                <LogOut className="h-4 w-4 mr-2" />
-                Logout
-            </Button>
+    <div className="min-h-screen animated-gradient">
+      <header className="sticky top-0 z-50 animate-in fade-in-0 duration-1000">
+        <div className="container mx-auto px-4 py-4">
+          <div className="rounded-lg border border-white/10 bg-black/10 px-4 py-2 backdrop-blur-lg">
+            <nav className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <Zap className="h-7 w-7 text-primary" />
+                <h1 className="text-xl font-bold text-white">VoteSecure</h1>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="text-right hidden sm:block">
+                  <p className="font-bold text-sm text-white">{currentUser?.full_name}</p>
+                  <p className="text-xs text-muted-foreground">{currentUser?.email}</p>
+                </div>
+                <Button variant="outline" className="border-white/20 bg-white/5 text-white hover:bg-white/20" onClick={onLogout}>
+                  Logout
+                </Button>
+              </div>
+            </nav>
+          </div>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold mb-4">Cast Your Vote</h2>
-            <p className="text-muted-foreground">
-              Select your preferred candidate below. You can only vote once.
-            </p>
+      <main className="container mx-auto px-4 py-12">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-12 animate-in fade-in-0 slide-in-from-bottom-5 duration-700">
+            <h2 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-br from-white to-gray-400">
+              Official Ballot
+            </h2>
+            <p className="mt-2 text-lg text-muted-foreground">Select your chosen candidate and cast your vote.</p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-            {candidates.map((candidate) => (
-              <Card 
-                key={candidate.id}
-                className={`cursor-pointer transition-all duration-300 hover:shadow-card-hover ${
-                  selectedCandidate === candidate.id 
-                    ? 'ring-2 ring-primary shadow-civic' 
-                    : ''
-                }`}
-                onClick={() => setSelectedCandidate(candidate.id)}
-              >
-                <CardHeader className="text-center">
-                    <Avatar className="w-24 h-24 mx-auto mb-4">
-                        <AvatarImage src={candidate.image_url || ''} alt={candidate.name} />
-                        <AvatarFallback><User className="h-12 w-12" /></AvatarFallback>
-                    </Avatar>
-                    <CardTitle className="text-xl">{candidate.name}</CardTitle>
-                    <Badge variant="secondary">{candidate.party}</Badge>
-                </CardHeader>
-                <CardContent className="text-center space-y-3">
+          {isLoading ? (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {[1, 2, 3].map((n) => <Skeleton key={n} className="h-80 w-full bg-white/5" />)}
+            </div>
+          ) : error ? (
+            <Card className="bg-destructive/20 border-destructive/50 text-center py-10"><p className="text-destructive-foreground">{error}</p></Card>
+          ) : (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {candidates.map((candidate, index) => (
+                <Card 
+                  key={candidate.id}
+                  className={`relative cursor-pointer transition-all duration-300 border-2 bg-black/20 backdrop-blur-md animate-in fade-in-0 slide-in-from-bottom-10`}
+                  style={{ animationDelay: `${index * 150}ms` }}
+                  onClick={() => setSelectedCandidate(candidate.id)}
+                >
+                  <div className={`absolute -inset-px rounded-xl transition-all duration-300 ${selectedCandidate === candidate.id ? 'border-2 border-primary shadow-lg shadow-primary/30' : 'border-transparent'}`} />
+                  <CardHeader className="text-center relative z-10">
+                    <Avatar className="w-24 h-24 mx-auto mb-4 border-4 border-background/50"><AvatarImage src={candidate.image_url || ''} /><AvatarFallback><User className="h-12 w-12" /></AvatarFallback></Avatar>
+                    <CardTitle className="text-xl text-white">{candidate.name}</CardTitle>
+                    <Badge variant="secondary" className="bg-white/10 text-white/80">{candidate.party}</Badge>
+                  </CardHeader>
+                  <CardContent className="text-center space-y-3 relative z-10">
                     <p className="text-sm text-muted-foreground h-16">{candidate.description}</p>
-                    {selectedCandidate === candidate.id && (
-                        <div className="bg-primary/10 rounded-full p-2 w-fit mx-auto">
-                            <CheckCircle className="h-5 w-5 text-primary" />
-                        </div>
-                    )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                  </CardContent>
+                  <div className={`absolute top-3 right-3 h-6 w-6 rounded-full bg-background/50 flex items-center justify-center transition-all duration-300 ${selectedCandidate === candidate.id ? 'opacity-100 scale-100' : 'opacity-0 scale-0'}`}>
+                    <CheckCircle className="h-5 w-5 text-primary" />
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
 
-          <div className="text-center">
+          <div className="mt-12 text-center animate-in fade-in-0 duration-1000 delay-500">
             <Button 
               onClick={handleVote}
               disabled={!selectedCandidate || isVoting}
-              variant="civic"
               size="lg"
+              className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all hover:shadow-xl hover:shadow-primary/40 hover:scale-105 min-w-[200px]"
             >
               {isVoting ? "Casting Vote..." : "Cast My Vote"}
+              <ArrowRight className="h-4 w-4 ml-2"/>
             </Button>
           </div>
         </div>

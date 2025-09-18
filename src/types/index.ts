@@ -26,3 +26,12 @@ export type Candidate = {
   description: string;
   image_url: string | null; // Can be null if not provided
 };
+
+export type Result = {
+  id: number;
+  name: string;
+  party: string;
+  description: string;
+  votes: number;
+  percentage: number;
+};
