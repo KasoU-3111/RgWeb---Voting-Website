@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Shield, Users, ChartBar, Lock } from "lucide-react";
 
-// Define the props for the component, including our new function
 interface HeroSectionProps {
   onNavigateToAuth: () => void;
 }
@@ -12,26 +11,22 @@ interface HeroSectionProps {
 const HeroSection = ({ onNavigateToAuth }: HeroSectionProps) => {
   return (
     <div className="min-h-screen bg-gradient-hero">
-      {/* Header */}
       <header className="container mx-auto px-4 py-6">
         <nav className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Shield className="h-8 w-8 text-primary-foreground" />
             <h1 className="text-2xl font-bold text-primary-foreground">VoteSecure</h1>
           </div>
-          <div className="space-x-4">
-            {/* These buttons now call the function passed from the parent */}
-            <Button onClick={onNavigateToAuth} variant="outline" className="border-white/20 text-primary-foreground hover:bg-white/10">
-              Login
-            </Button>
-            <Button onClick={onNavigateToAuth} variant="secondary">
-              Sign Up
-            </Button>
-          </div>
+          {/* UPDATED BUTTON SECTION */}
+          <Button 
+            onClick={onNavigateToAuth} 
+            variant="secondary"
+          >
+            Login
+          </Button>
         </nav>
       </header>
 
-      {/* Hero Content */}
       <main className="container mx-auto px-4 py-20">
         <div className="text-center max-w-4xl mx-auto">
           <h2 className="text-5xl font-bold text-primary-foreground mb-6">
@@ -51,7 +46,6 @@ const HeroSection = ({ onNavigateToAuth }: HeroSectionProps) => {
           </div>
         </div>
 
-        {/* Features Grid - THIS IS THE MISSING CONTENT */}
         <div className="grid md:grid-cols-3 gap-8 mt-20">
           <Card className="bg-white/10 backdrop-blur-sm border-white/20 text-primary-foreground">
             <CardHeader>
@@ -82,7 +76,6 @@ const HeroSection = ({ onNavigateToAuth }: HeroSectionProps) => {
           </Card>
         </div>
 
-        {/* Trust Indicators - THIS IS ALSO MISSING CONTENT */}
         <div className="mt-20 text-center">
           <div className="flex items-center justify-center space-x-8 text-primary-foreground/80">
             <div className="flex items-center space-x-2">
