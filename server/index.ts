@@ -87,7 +87,6 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
-
 // USER ROUTES (Protected)
 app.get('/api/profile', protect, async (req: RequestWithUser, res: Response) => {
     const userId = req.user?.userId;
@@ -295,7 +294,6 @@ app.get('/api/admin/voter-turnout', protect, async (req: RequestWithUser, res: R
       res.status(500).json({ message: 'Server error while fetching voter turnout.' });
     }
 });
-
 
 // PUBLIC ROUTES
 app.get('/api/results', async (req, res) => {

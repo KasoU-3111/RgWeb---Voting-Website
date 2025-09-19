@@ -7,7 +7,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
-import { AuthProvider } from "./context/AuthContext"; // <-- 1. IMPORT
+import { AuthProvider } from "./context/AuthContext";
+import AuthPage from "./pages/AuthPage"; // <-- IMPORT
+import LearnMorePage from "./pages/LearnMorePage"; // <-- IMPORT
+import ResultsPage from "./components/ResultsPage"; // <-- IMPORT
 
 const queryClient = new QueryClient();
 
@@ -16,11 +19,13 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      {/* 2. WRAP EVERYTHING INSIDE THE AUTH PROVIDER */}
       <AuthProvider>
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/auth" element={<AuthPage />} /> 
+            <Route path="/learn-more" element={<LearnMorePage />} />
+            <Route path="/results" element={<ResultsPage onBack={() => window.history.back()} />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
