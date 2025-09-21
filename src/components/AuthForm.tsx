@@ -1,13 +1,14 @@
 // src/components/AuthForm.tsx
 
 import { useState } from "react";
+import { useNavigate } from "react-router-dom"; // <-- IMPORT useNavigate
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Shield, Mail, Lock, User as UserIcon, Zap } from "lucide-react";
+import { Shield, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { loginUser, registerUser } from "@/services/apiService";
 import { LoginCredentials, RegisterUserData } from "@/types";
@@ -15,6 +16,7 @@ import { useAuth } from "@/context/AuthContext";
 
 const AuthForm = () => {
   const { login } = useAuth();
+  const navigate = useNavigate(); // <-- INITIALIZE useNavigate
   const [isLoading, setIsLoading] = useState(false);
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
 
@@ -24,7 +26,6 @@ const AuthForm = () => {
   const [regEmail, setRegEmail] = useState('');
   const [regPassword, setRegPassword] = useState('');
 
-  // All handler functions (handleLogin, handleRegister) remain exactly the same
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -34,6 +35,7 @@ const AuthForm = () => {
       const data = await loginUser(credentials);
       login(data.user, data.token); 
       toast.success('Login successful!');
+      navigate('/'); // <-- ADD THIS LINE TO REDIRECT
     } catch (error) {
       if (error instanceof Error) {
         toast.error(error.message);
@@ -60,7 +62,7 @@ const AuthForm = () => {
       setRegFullName('');
       setRegEmail('');
       setRegPassword('');
-      setIsRegisterOpen(false);
+      setIsRegisterOpen(false); // This closes the registration dialog
     } catch (error) {
       if (error instanceof Error) {
         toast.error(error.message);

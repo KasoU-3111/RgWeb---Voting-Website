@@ -8,9 +8,9 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import { AuthProvider } from "./context/AuthContext";
-import AuthPage from "./pages/AuthPage"; // <-- IMPORT
-import LearnMorePage from "./pages/LearnMorePage"; // <-- IMPORT
-import ResultsPage from "./components/ResultsPage"; // <-- IMPORT
+import AuthPage from "./pages/AuthPage";
+import LearnMorePage from "./pages/LearnMorePage";
+import ResultsPage from "./components/ResultsPage";
 
 const queryClient = new QueryClient();
 
